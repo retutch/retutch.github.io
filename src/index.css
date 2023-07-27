@@ -1,0 +1,24 @@
+:root {
+}
+
+body {
+  min-width: 320px;
+  width: 100%;
+  margin: 0;
+}
+
+h1 {
+  font-size: 20px;
+  padding: 0;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.cm-editor {
+  height: calc(100vh - 80px);
+  width: 60vw;
+}
+
+.cm-scroller {
+  overflow: auto;
+}
