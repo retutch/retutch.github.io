@@ -1,6 +1,3 @@
-:root {
-}
-
 body {
   min-width: 320px;
   width: 100%;
@@ -21,4 +18,8 @@ h1 {
 
 .cm-scroller {
   overflow: auto;
+}
+
+.cm-editor.cm-focused {
+  outline: none;
 }

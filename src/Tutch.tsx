@@ -3,6 +3,8 @@ import useCodeEditor from './editor/useCodeEditor';
 import { addErrorMark, addJustificationMarks, clearMarks, extensions } from './editor/extensions';
 import { Justification, ParsingError, evaluate, parse } from 'tutch';
 import { EditorView } from 'codemirror';
+import { TutchResponse } from './types';
+import TutchDisplay from './TutchDisplay';
 
 const INIT_PROGRAM = `
 proof triv: T =
@@ -13,12 +15,7 @@ end;
 
 function Tutch() {
   const [value, setValue] = React.useState(INIT_PROGRAM);
-  const [response, setResponse] = React.useState<
-    | { error: true; expected: false; msg: string }
-    | { error: true; expected: true; contents: ParsingError }
-    | { error: false; justifications: Justification[] }
-    | null
-  >(null);
+  const [tutchResponse, setTutchResponse] = React.useState<TutchResponse>({ state: 'Waiting' });
   const { ref, view, editorIsOutOfDate } = useCodeEditor({
     value,
     extensions: extensions,
@@ -32,51 +29,31 @@ function Tutch() {
     try {
       const ast = parse(str);
       const justifications = evaluate(ast);
-      setResponse({ error: false, justifications });
-      view.dispatch({
-        effects: addJustificationMarks.of(
-          justifications
-            .map((justification) => {
-              const lineStart = view.state.doc.line(justification.loc.start.line);
-              const lineEnd = view.state.doc.line(justification.loc.end.line);
-              return {
-                from: lineStart.from + justification.loc.start.column - 1,
-                to: lineEnd.from + justification.loc.end.column - 1,
-                justified: justification.type === 'Justified',
-              };
-            })
-            .filter((x): x is { from: number; to: number; justified: boolean } => x !== null)
-            .sort((a, b) => a.from - b.from),
-        ),
-      });
+      setTutchResponse({ state: 'HasJustifications', justifications });
+      dispatchCodeMirrorJustifications(view, justifications);
     } catch (err) {
-      if ((err as any).name !== 'ParsingError') {
-        setResponse({
-          error: true,
-          expected: false,
+      if ((err as any).name === 'ParsingError') {
+        const parsingError = err as ParsingError;
+        setTutchResponse({
+          state: 'ExpectedError',
+          contents: parsingError,
+        });
+        dispatchCodeMirrorSyntaxErrors(view, parsingError);
+      } else {
+        setTutchResponse({
+          state: 'UnexpectedError',
           msg: `Unexpected error: ${JSON.stringify(err)}`,
         });
         view.dispatch({ effects: clearMarks.of({}) });
-      } else {
-        const parsingError = err as ParsingError;
-        setResponse({
-          error: true,
-          expected: true,
-          contents: parsingError,
-        });
-        if (parsingError.loc !== null) {
-          const lineStart = view.state.doc.line(parsingError.loc.start.line);
-          const lineEnd = view.state.doc.line(parsingError.loc.end.line);
-          view.dispatch({
-            effects: addErrorMark.of({
-              from: lineStart.from + parsingError.loc.start.column - 1,
-              to: lineEnd.from + parsingError.loc.end.column - 1,
-            }),
-          });
-        }
       }
     }
   }
+
+  React.useEffect(() => {
+    if (editorIsOutOfDate) {
+      view?.dispatch({ effects: clearMarks.of({}) });
+    }
+  }, [editorIsOutOfDate]);
 
   React.useEffect(() => {
     if (!view) return;
@@ -86,17 +63,45 @@ function Tutch() {
   return (
     <>
       <div ref={ref}></div>
-      <pre>
-        {editorIsOutOfDate || response === null
-          ? '...'
-          : response.error === true && response.expected
-          ? JSON.stringify(response.contents, null, 2)
-          : response.error === true
-          ? response.msg
-          : JSON.stringify(response.justifications, null, 2)}
-      </pre>
+      <TutchDisplay tutchResponse={editorIsOutOfDate ? { state: 'Waiting' } : tutchResponse} />
     </>
   );
+}
+
+function dispatchCodeMirrorJustifications(view: EditorView, justifications: Justification[]) {
+  view.dispatch({
+    effects: addJustificationMarks.of(
+      justifications
+        .map((justification) => {
+          return {
+            from:
+              view.state.doc.line(justification.loc.start.line).from +
+              justification.loc.start.column -
+              1,
+            to:
+              view.state.doc.line(justification.loc.end.line).from +
+              justification.loc.end.column -
+              1,
+            justified: justification.type === 'Justified',
+          };
+        })
+        .filter((x): x is { from: number; to: number; justified: boolean } => x !== null)
+        .sort((a, b) => a.from - b.from),
+    ),
+  });
+}
+
+function dispatchCodeMirrorSyntaxErrors(view: EditorView, error: ParsingError) {
+  if (error.loc === null) {
+    return;
+  }
+
+  view.dispatch({
+    effects: addErrorMark.of({
+      from: view.state.doc.line(error.loc.start.line).from + error.loc.start.column - 1,
+      to: view.state.doc.line(error.loc.end.line).from + error.loc.end.column - 1,
+    }),
+  });
 }
 
 export default Tutch;
