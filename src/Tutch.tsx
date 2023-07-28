@@ -6,6 +6,7 @@ import { EditorView } from 'codemirror';
 import { TutchResponse } from './types';
 import TutchDisplay from './TutchDisplay';
 
+const KEY = 'tutch_stored_program';
 const INIT_PROGRAM = `
 proof triv: T =
 begin
@@ -25,6 +26,7 @@ function Tutch() {
 
   function updateTutch(view: EditorView, str: string) {
     setValue(str);
+    localStorage.setItem(KEY, str);
     if (!view) return;
     try {
       const ast = parse(str);
@@ -57,7 +59,7 @@ function Tutch() {
 
   React.useEffect(() => {
     if (!view) return;
-    updateTutch(view, INIT_PROGRAM);
+    updateTutch(view, localStorage.getItem(KEY) || INIT_PROGRAM);
   }, [view === null]);
 
   return (
