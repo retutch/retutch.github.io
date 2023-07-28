@@ -49,7 +49,8 @@ function App() {
           Based on the design of{' '}
           <a href="https://www2.tcs.ifi.lmu.de/~abel/tutch/">Andreas Abel and others</a>. This
           implementation by <a href="https://www.convivial.tools/">Chris Martens</a> and{' '}
-          <a href="https://github.com/robsimmons">Rob Simmons</a>.
+          <a href="https://github.com/robsimmons">Rob Simmons</a>.{' '}
+          <a href="https://github.com/retutch/retutch.github.io">View this site on GitHub.</a>
         </p>
       </footer>
     </div>
